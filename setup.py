@@ -1,15 +1,13 @@
 """Setup pyalic module"""
-import os
 from setuptools import setup, find_packages
 
-with open("../Pyalic_server/README.md", "r", encoding='utf-8') as readme_file:
+with open("README.md", "r", encoding='utf-8') as readme_file:
     readme = readme_file.read()
 
 
 def requirements():
     """Get current requirements"""
-    with open(os.path.join(os.path.dirname(__file__), "requirements.txt"), 'r', encoding='utf-8') as f:
-        return [line.strip() for line in f.readlines()]
+    return ['httpx']
 
 
 setup(
