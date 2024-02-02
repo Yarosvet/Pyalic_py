@@ -4,7 +4,7 @@
 Install package using `pip` from this GitHub repository
 
 ```shell
-pip install git+https://github.com/Yarosvet/Pyalic_py
+pip install pyalic
 ```
 
 
