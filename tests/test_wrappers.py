@@ -12,7 +12,7 @@ def test_check_key_secure(http_server):
     fingerprint = rand_str(16)
     http_server.fail_first = True
     http_server.set_response(
-        HTTPRequest(method="GET",
+        HTTPRequest(method="POST",
                     url="/check_license",
                     request_data={"license_key": key, "fingerprint": fingerprint}),
         CommonResponses.valid_check_key_response(session_id=rand_str(16))
@@ -26,7 +26,7 @@ def test_check_key_ssl_enabled(ssl_server):
     key = rand_str(16)
     fingerprint = rand_str(16)
     ssl_server.set_response(
-        HTTPRequest(method="GET",
+        HTTPRequest(method="POST",
                     url="/check_license",
                     request_data={"license_key": key, "fingerprint": fingerprint}),
         CommonResponses.valid_check_key_response(session_id=rand_str(16))

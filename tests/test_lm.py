@@ -15,7 +15,7 @@ def test_check_key_valid(ssl_server):
     lm.enable_auto_keepalive = False
     key = rand_str(16)
     ssl_server.set_response(
-        HTTPRequest(method="GET",
+        HTTPRequest(method="POST",
                     url="/check_license",
                     request_data={"license_key": key, "fingerprint": get_fingerprint()}),
         CommonResponses.valid_check_key_response(session_id=rand_str(16))
@@ -29,7 +29,7 @@ def test_check_key_invalid(ssl_server):
     lm.enable_auto_keepalive = False
     key = rand_str(16)
     ssl_server.set_response(
-        HTTPRequest(method="GET",
+        HTTPRequest(method="POST",
                     url="/check_license",
                     request_data={"license_key": key, "fingerprint": get_fingerprint()}),
         CommonResponses.invalid_check_key_response()
@@ -97,7 +97,7 @@ def test_auto_keepalive(ssl_server):
     key = rand_str(16)
     session_id = rand_str(16)
     ssl_server.set_response(
-        HTTPRequest(method="GET",
+        HTTPRequest(method="POST",
                     url="/check_license",
                     request_data={"license_key": key, "fingerprint": get_fingerprint()}),
         CommonResponses.valid_check_key_response(session_id=session_id)
@@ -142,7 +142,7 @@ def test_auto_keepalive_fail_event(ssl_server):
     key = rand_str(16)
     session_id = rand_str(16)
     ssl_server.set_response(
-        HTTPRequest(method="GET",
+        HTTPRequest(method="POST",
                     url="/check_license",
                     request_data={"license_key": key, "fingerprint": get_fingerprint()}),
         CommonResponses.valid_check_key_response(session_id=session_id)

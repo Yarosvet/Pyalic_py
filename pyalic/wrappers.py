@@ -18,7 +18,7 @@ class ApiWrapper:
 
     def check_key(self, key: str, fingerprint: str) -> httpx.Response:
         """Send **check key** request"""
-        return httpx.request('GET', f"{self.url}/check_license",
+        return httpx.request('POST', f"{self.url}/check_license",
                              verify=self.ssl_cert,
                              json={"license_key": key, "fingerprint": fingerprint},
                              timeout=self.TIMEOUT)
