@@ -12,12 +12,12 @@ def requirements():
 
 setup(
     name='pyalic',
-    version='1.0.0',
+    version='1.0.1',
     author='Yarosvet',
     description="Licensing system module which allows you to manage access to your products with ease",
     long_description_content_type="text/markdown",
     long_description=readme,
-    url="https://github.com/Yarosvet/Pyalic",
+    url="https://github.com/Yarosvet/Pyalic_py",
     packages=find_packages(include=['pyalic', 'pyalic.*']),
     install_requires=[*requirements()],
     classifiers=[
