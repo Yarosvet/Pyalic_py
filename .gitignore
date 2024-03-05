@@ -1,2 +1,5 @@
 .tox
-.pypirc
+build/
+dist/
+*.egg-info/
+venv/
