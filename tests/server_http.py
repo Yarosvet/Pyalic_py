@@ -1,14 +1,15 @@
 """HTTP server for testing purposes"""
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler
-import typing
+from collections.abc import Callable
+from typing import Literal
 import json
 
 
 @dataclass
 class HTTPRequest:
     """HTTP request model"""
-    method: typing.Literal["GET", "POST", "PUT", "DELETE"]
+    method: Literal["GET", "POST", "PUT", "DELETE"]
     url: str
     request_data: dict
 
@@ -29,12 +30,12 @@ class HTTPResponse:
 
 class PreconfiguredHTTPRequestHandler(BaseHTTPRequestHandler):
     """Handle HTTP requests with preconfigured responses"""
-    _mapping: typing.Dict[HTTPRequest, HTTPResponse] = {}
-    _events: typing.Dict[HTTPRequest, typing.Callable] = {}
+    _mapping: dict[HTTPRequest, HTTPResponse] = {}
+    _events: dict[HTTPRequest, Callable] = {}
     fail_first: bool = False
 
     @classmethod
-    def set_response(cls, request: HTTPRequest, response: HTTPResponse, event: typing.Callable = None):
+    def set_response(cls, request: HTTPRequest, response: HTTPResponse, event: Callable = None):
         """Set response for HTTP request"""
         cls._mapping[request] = response
         if event is not None:
@@ -45,7 +46,7 @@ class PreconfiguredHTTPRequestHandler(BaseHTTPRequestHandler):
         """Clear all responses mapping"""
         cls._mapping = {}
 
-    def process_request(self, method: typing.Literal["GET", "POST", "PUT", "DELETE"]):
+    def process_request(self, method: Literal["GET", "POST", "PUT", "DELETE"]):
         """Process request of any method"""
         if self.fail_first:
             self.send_response(500)
@@ -91,8 +92,8 @@ def preconfigured_handler_factory() -> type[PreconfiguredHTTPRequestHandler]:
     """Create new preconfigured HTTP request handler"""
 
     class _Handler(PreconfiguredHTTPRequestHandler):
-        _mapping: typing.Dict[HTTPRequest, HTTPResponse] = {}
-        _events: typing.Dict[HTTPRequest, typing.Callable] = {}
+        _mapping: dict[HTTPRequest, HTTPResponse] = {}
+        _events: dict[HTTPRequest, Callable] = {}
         fail_first: bool = False
 
     return _Handler
