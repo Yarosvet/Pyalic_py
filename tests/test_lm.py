@@ -1,8 +1,10 @@
 """Test License Manager module"""
 import time
-
+import pytest
 from ..pyalic.lm import LicenseManager
 from ..pyalic.fingerprint import get_fingerprint
+from ..pyalic.types import LicenseResponse
+from ..pyalic import exceptions
 from . import SERVER_PORT, rand_str, CERT_FILE
 from .server_http import HTTPRequest, CommonResponses
 
@@ -20,7 +22,7 @@ def test_check_key_valid(ssl_server):
                     request_data={"license_key": key, "fingerprint": get_fingerprint()}),
         CommonResponses.valid_check_key_response(session_id=rand_str(16))
     )
-    assert lm.check_key(key).success
+    assert isinstance(lm.check_key(key), LicenseResponse)
 
 
 def test_check_key_invalid(ssl_server):
@@ -34,7 +36,8 @@ def test_check_key_invalid(ssl_server):
                     request_data={"license_key": key, "fingerprint": get_fingerprint()}),
         CommonResponses.invalid_check_key_response()
     )
-    assert not lm.check_key(key).success
+    with pytest.raises(exceptions.InvalidKeyException):
+        lm.check_key(key)
 
 
 def test_keepalive(ssl_server):
@@ -47,7 +50,7 @@ def test_keepalive(ssl_server):
                     request_data={"session_id": lm.session_id}),
         CommonResponses.valid_keepalive_response()
     )
-    assert lm.keep_alive().success
+    lm.keep_alive()
 
 
 def test_keepalive_invalid(ssl_server):
@@ -60,7 +63,8 @@ def test_keepalive_invalid(ssl_server):
                     request_data={"session_id": lm.session_id}),
         CommonResponses.invalid_keepalive_response()
     )
-    assert not lm.keep_alive().success
+    with pytest.raises(exceptions.KeepaliveException):
+        lm.keep_alive()
 
 
 def test_end_session(ssl_server):
@@ -73,7 +77,7 @@ def test_end_session(ssl_server):
                     request_data={"session_id": lm.session_id}),
         CommonResponses.valid_end_session_response()
     )
-    assert lm.end_session().success
+    lm.end_session()
 
 
 def test_end_session_invalid(ssl_server):
@@ -86,7 +90,8 @@ def test_end_session_invalid(ssl_server):
                     request_data={"session_id": lm.session_id}),
         CommonResponses.invalid_end_session_response()
     )
-    assert not lm.end_session().success
+    with pytest.raises(exceptions.EndSessionException):
+        lm.end_session()
 
 
 def test_auto_keepalive(ssl_server):
@@ -116,8 +121,7 @@ def test_auto_keepalive(ssl_server):
         CommonResponses.valid_keepalive_response(),
         event=got_keepalive
     )
-    check_resp = lm.check_key(key)
-    assert check_resp.success
+    assert isinstance(lm.check_key(key), LicenseResponse)
     assert lm.auto_keepalive_sender.alive
     time.sleep(2)
     assert keepalive_count >= 4
@@ -133,7 +137,7 @@ def test_auto_keepalive_fail_event(ssl_server):
     lm.auto_keepalive_sender.interval = 0.5
     bad_flag = False
 
-    def got_bad_keepalive(operation_response, exc):  # pylint: disable=unused-argument
+    def got_bad_keepalive(exc: exceptions.PyalicException):  # pylint: disable=unused-argument
         nonlocal bad_flag
         bad_flag = True
 
@@ -153,8 +157,7 @@ def test_auto_keepalive_fail_event(ssl_server):
                     request_data={"session_id": session_id}),
         CommonResponses.invalid_keepalive_response()
     )
-    check_resp = lm.check_key(key)
-    assert check_resp.success
+    assert isinstance(lm.check_key(key), LicenseResponse)
     time.sleep(lm.auto_keepalive_sender.interval)
     assert not lm.auto_keepalive_sender.alive
     assert bad_flag

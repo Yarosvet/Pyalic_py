@@ -1,18 +1,14 @@
 """Synchronous LicenseManager's environment module"""
 from threading import Thread
 import time
-import typing
+from typing import Any
+from collections.abc import Callable
 
 from .fingerprint import get_fingerprint
-from .exceptions import RequestFailed
+from .exceptions import RequestFailed, KeepaliveException, PyalicException
 from . import response
 from .wrappers import SecureApiWrapper
-
-
-class CallableBadKeepaliveEvent(typing.Protocol):  # pylint: disable=missing-class-docstring
-    def __call__(self, operation_response: response.OperationResponse = None,
-                 exc: Exception = None) -> typing.Any:
-        ...
+from .types import LicenseResponse
 
 
 class AutoKeepaliveSender:
@@ -42,40 +38,31 @@ class AutoKeepaliveSender:
         try:
             # Keepalive
             last_sent = time.time()
-            resp = self.lm.keep_alive()
-            while resp.success and not self._stop_flag:
+            self.lm.keep_alive()
+            while not self._stop_flag:
                 # Keep interval between requests
                 time_past = time.time() - last_sent
                 time.sleep(self.interval - time_past if self.interval > time_past else 0)
                 # Keepalive
                 last_sent = time.time()
-                resp = self.lm.keep_alive()
-            if not resp.success:
-                self._call_event_bad_keepalive(operation_response=resp)
-        except RequestFailed as exc:
+                self.lm.keep_alive()
+        except (RequestFailed, KeepaliveException) as exc:
             # Call event if request failed
             self._call_event_bad_keepalive(exc=exc)
         finally:
             self.alive = False
 
-    def set_event_bad_keepalive(self, func: CallableBadKeepaliveEvent) -> None:
+    def set_event_bad_keepalive(self, func: Callable[[PyalicException], Any]) -> None:
         """
         Set function-event will be called when keep-alive request goes wrong.
 
-        Function must expect two arguments:
-
-        ``operation_response: response.OperationResponse = None, exc: Exception = None``
-
-        It gets one of two arguments:
-        operation_response, if request returned wrong answer
-        exc, if something caused exception while trying to send request
+        Function must expect an argument (exception)
         """
         self._event = func
 
-    def _call_event_bad_keepalive(self, operation_response: response.OperationResponse = None,
-                                  exc: Exception = None) -> None:
+    def _call_event_bad_keepalive(self, exc: PyalicException = None) -> None:
         if self._event is not None:
-            self._event(operation_response=operation_response, exc=exc)
+            self._event(exc)
 
     def stop(self):
         """Stop sending keepalive packets"""
@@ -96,35 +83,33 @@ class LicenseManager:
         self.auto_keepalive_sender = AutoKeepaliveSender(lm=self)
         self.api = SecureApiWrapper(url=root_url, ssl_cert=False if ssl_public_key is None else ssl_public_key)
 
-    def check_key(self, key: str) -> response.LicenseCheckResponse:
+    def check_key(self, key: str) -> LicenseResponse:
         """
         Check license key with specified Pyalic Server
         :param key: License key
-        :return: `response.LicenseCheckResponse`
+        :return: `response.LicenseResponse`
         """
         r = self.api.check_key(key, get_fingerprint())
         processed_resp = response.process_check_key(r.status_code, r.json())
         # Save session ID
         self.session_id = processed_resp.session_id
         # Start sending keepalive packets if needed
-        if processed_resp.success and self.enable_auto_keepalive:
+        if self.enable_auto_keepalive:
             self.auto_keepalive_sender.start()
         return processed_resp
 
-    def keep_alive(self) -> response.OperationResponse:
+    def keep_alive(self):
         """
         Send keep-alive packet to license server
         (LicenseManager can do it automatically)
-        :return: 'response.OperationResponse`
         """
         r = self.api.keepalive(self.session_id)
-        return response.process_keepalive(r.status_code, r.json())
+        response.process_keepalive(r.status_code, r.json())
 
-    def end_session(self) -> response.OperationResponse:
+    def end_session(self):
         """
         End current license session
-        :return: 'response.OperationResponse`
         """
         self.auto_keepalive_sender.stop()
         r = self.api.end_session(self.session_id)
-        return response.process_end_session(r.status_code, r.json())
+        response.process_end_session(r.status_code, r.json())

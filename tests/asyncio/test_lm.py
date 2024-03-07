@@ -1,9 +1,10 @@
 """Test Async License Manager module"""
 import asyncio
 import pytest
-
 from ...pyalic.asyncio.lm import AsyncLicenseManager
 from ...pyalic.fingerprint import get_fingerprint
+from ...pyalic import exceptions
+from ...pyalic.types import LicenseResponse
 from .. import SERVER_PORT, rand_str, CERT_FILE
 from ..server_http import HTTPRequest, CommonResponses
 
@@ -22,7 +23,7 @@ async def test_check_key_valid(ssl_server):
                     request_data={"license_key": key, "fingerprint": get_fingerprint()}),
         CommonResponses.valid_check_key_response(session_id=rand_str(16))
     )
-    assert (await lm.check_key(key)).success
+    isinstance(await lm.check_key(key), LicenseResponse)
 
 
 @pytest.mark.asyncio
@@ -37,7 +38,8 @@ async def test_check_key_invalid(ssl_server):
                     request_data={"license_key": key, "fingerprint": get_fingerprint()}),
         CommonResponses.invalid_check_key_response()
     )
-    assert not (await lm.check_key(key)).success
+    with pytest.raises(exceptions.InvalidKeyException):
+        await lm.check_key(key)
 
 
 @pytest.mark.asyncio
@@ -51,7 +53,7 @@ async def test_keepalive(ssl_server):
                     request_data={"session_id": lm.session_id}),
         CommonResponses.valid_keepalive_response()
     )
-    assert (await lm.keep_alive()).success
+    await lm.keep_alive()
 
 
 @pytest.mark.asyncio
@@ -65,7 +67,8 @@ async def test_keepalive_invalid(ssl_server):
                     request_data={"session_id": lm.session_id}),
         CommonResponses.invalid_keepalive_response()
     )
-    assert not (await lm.keep_alive()).success
+    with pytest.raises(exceptions.KeepaliveException):
+        await lm.keep_alive()
 
 
 @pytest.mark.asyncio
@@ -79,7 +82,7 @@ async def test_end_session(ssl_server):
                     request_data={"session_id": lm.session_id}),
         CommonResponses.valid_end_session_response()
     )
-    assert (await lm.end_session()).success
+    await lm.end_session()
 
 
 @pytest.mark.asyncio
@@ -93,7 +96,8 @@ async def test_end_session_invalid(ssl_server):
                     request_data={"session_id": lm.session_id}),
         CommonResponses.invalid_end_session_response()
     )
-    assert not (await lm.end_session()).success
+    with pytest.raises(exceptions.EndSessionException):
+        await lm.end_session()
 
 
 @pytest.mark.asyncio
@@ -124,8 +128,7 @@ async def test_auto_keepalive(ssl_server):
         CommonResponses.valid_keepalive_response(),
         event=got_keepalive
     )
-    check_resp = await lm.check_key(key)
-    assert check_resp.success
+    assert isinstance(await lm.check_key(key), LicenseResponse)
     await asyncio.sleep(2)
     assert keepalive_count >= 4
     lm.auto_keepalive_sender.stop()
@@ -141,7 +144,7 @@ async def test_auto_keepalive_fail_event(ssl_server):
     lm.auto_keepalive_sender.interval = 0.5
     bad_flag = False
 
-    def got_bad_keepalive(operation_response, exc):  # pylint: disable=unused-argument
+    def got_bad_keepalive(exc):  # pylint: disable=unused-argument
         nonlocal bad_flag
         bad_flag = True
 
@@ -161,7 +164,6 @@ async def test_auto_keepalive_fail_event(ssl_server):
                     request_data={"session_id": session_id}),
         CommonResponses.invalid_keepalive_response()
     )
-    check_resp = await lm.check_key(key)
-    assert check_resp.success
+    assert isinstance(await lm.check_key(key), LicenseResponse)
     await asyncio.sleep(lm.auto_keepalive_sender.interval)
     assert bad_flag
